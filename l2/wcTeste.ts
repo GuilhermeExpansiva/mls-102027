@@ -1,14 +1,16 @@
-/// <mls shortName="wcTeste" project="102027" enhancement="_100000_enhancementLit" />
+/// <mls shortName="wcTeste" project="102027" enhancement="_102027_enhancementLit" />
 
  import { html, LitElement } from 'lit'; 
- import { customElement, property } from 'lit/decorators.js';
-
+import { customElement, property } from 'lit/decorators.js';
+ import { CollabLitElement } from '/_102027_/collabLitElement';
+ 
 @customElement('wc-teste-102027')
- export class WcTeste100000 extends LitElement {
+ export class WcTeste100000 extends CollabLitElement {
     
      @property() name: string = 'Somebody';
 
      render() {
          return html`<p> Hello, ${ this.name } !</p>`;
      }
- }
+}
+ 
