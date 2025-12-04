@@ -5,10 +5,10 @@
  * Copyright 2020 Google LLC
  * SPDX-License-Identifier: BSD-3-Clause
  */
-import { Part, DirectiveParent, CompiledTemplateResult, MaybeCompiledTemplateResult, UncompiledTemplateResult } from '/_100000_litHtml.js';
-import { DirectiveResult, DirectiveClass, PartInfo } from '/_100000_/directive.js';
+import { Part, DirectiveParent, CompiledTemplateResult, MaybeCompiledTemplateResult, UncompiledTemplateResult } from '/_102027_litHtml.js';
+import { DirectiveResult, DirectiveClass, PartInfo } from '/_102027_/directive.js';
 type Primitive = null | undefined | boolean | number | string | symbol | bigint;
-declare const ChildPart: typeof import("/_100000_litHtml.js").ChildPart;
+declare const ChildPart: typeof import("/_102027_litHtml.js").ChildPart;
 type ChildPart = InstanceType<typeof ChildPart>;
 /**
  * Tests if a value is a primitive value.
