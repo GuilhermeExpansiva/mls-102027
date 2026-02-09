@@ -1,4 +1,4 @@
-/// <mls shortName="map" project="102027" enhancement="_blank" />
+/// <mls fileReference="_102027_/l2/map.ts" enhancement="_blank" />
 
 /**
  * @license
