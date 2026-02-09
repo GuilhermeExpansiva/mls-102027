@@ -1,4 +1,4 @@
-/// <mls shortName="libCompileStyle" project="102027" enhancement="_blank" />
+/// <mls fileReference="_102027_/l2/libCompileStyle.ts" enhancement="_blank" />
 
 import { preCompileLess } from '/_102027_/l2/designSystemBase.js';
 

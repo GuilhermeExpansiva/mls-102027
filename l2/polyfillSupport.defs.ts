@@ -1,2 +1,2 @@
-/// <mls shortName="polyfillSupport" project="102027" enhancement="_blank" folder="" />
+/// <mls fileReference="_102027_/l2/polyfillSupport.defs.ts" enhancement="_blank" />
 

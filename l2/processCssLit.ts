@@ -1,4 +1,4 @@
-/// <mls shortName="processCssLit" project="102027" enhancement="_blank" />
+/// <mls fileReference="_102027_/l2/processCssLit.ts" enhancement="_blank" />
 
 import { compileStyleUsingMFile } from '/_102027_/l2/libCompileStyle.js';
 
