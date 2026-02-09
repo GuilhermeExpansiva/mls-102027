@@ -1,4 +1,4 @@
-/// <mls shortName="utils" project="102027" enhancement="_blank" />
+/// <mls fileReference="_102027_/l2/utils.ts" enhancement="_blank" />
 
 export function convertTagToFileName(tag: string): {
     shortName: string;
