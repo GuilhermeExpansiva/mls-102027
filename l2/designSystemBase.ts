@@ -24,6 +24,22 @@ export async function getTokensLess(project: number, theme: string): Promise<str
     return Promise.resolve(tokensLess);
 }
 
+export async function getTokensLessByTokensArray(tokens: IDesignSystemTokens[], theme: string): Promise<string> {
+
+    const tokenByTheme = tokens.find((item) => item.themeName === theme);
+    if (!tokenByTheme) throw new Error(`no find theme: ${theme}`);
+    let tokensLess = '';
+    tokensLess += Object.keys(tokenByTheme.color).map((key) => {
+        let token = '';
+        if (!key.startsWith('_dark-')) token = `@${key}: ${tokenByTheme.color[key]};`
+        return token;
+    }).filter((item) => !!item).join('\n')
+    tokensLess += '\n' + Object.keys(tokenByTheme.typography).map((key) => `@${key}: ${tokenByTheme.typography[key]};`).join('\n');
+    tokensLess += '\n' + Object.keys(tokenByTheme.global).map((key) => `@${key}: ${tokenByTheme.global[key]};`).join('\n');
+    return Promise.resolve(tokensLess);
+}
+
+
 export async function getTokensCss(project: number, theme: string): Promise<string> {
 
     const tokens = await getTokens(project);
@@ -88,6 +104,31 @@ export async function preCompileLess(project: number, less: string, theme: strin
         const tokensLess = await getTokensLess(project, theme);
         const res = await compileLess(`${newLess}\n${tokensLess}`)
         return res;
+    } catch (err: any) {
+        throw new Error(`Error on pre compile tokens Less: ${err.message}`);
+    }
+
+}
+
+export async function preCompileLessAction(less: string, tokens: IDesignSystemTokens[], theme: string): Promise<string> {
+
+    try {
+        less = removeTokensFromSource(less);
+        const tokenInfo = tokens.find((item) => item.themeName === theme);
+        if (!tokenInfo) return '';
+        const allTokens = { ...tokenInfo.color, ...tokenInfo.typography, ...tokenInfo.global };
+        const darkAndLight = getDarkAndLight(allTokens);
+        const newLess = convertLessTokensToCss(less, darkAndLight['root']);
+        const tokensLess = await getTokensLessByTokensArray(tokens, theme);
+        let resultLess = '';
+        try {
+            const res = await (window as any).less.render(`${newLess}\n${tokensLess}`, { compress: false })
+            resultLess = res.css;
+        } catch (err) {
+            resultLess = '';
+        }
+        return resultLess;
+
     } catch (err: any) {
         throw new Error(`Error on pre compile tokens Less: ${err.message}`);
     }
