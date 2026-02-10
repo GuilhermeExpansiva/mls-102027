@@ -1,6 +1,6 @@
 /// <mls fileReference="_102027_/l2/libCompileStyle.ts" enhancement="_blank" />
 
-import { preCompileLess } from '/_102027_/l2/designSystemBase.js';
+import { preCompileLess, preCompileLessAction } from '/_102027_/l2/designSystemBase.js';
 
 export async function compileStyleUsingStorFile(shortName: string, project: number, folder: string, theme: string = 'Default') {
 
@@ -33,6 +33,20 @@ export async function compileStyleUsingMFile(modelStyle: mls.editor.IModelStyle,
 
     try {
         return preCompileLess2(project, val, theme, modelStyle);
+    } catch (err: any) {
+        throw new Error(err.message);
+    }
+}
+
+export async function compileStyleUsingSourceString(sourceLess: string, tokens: string, theme: string = 'Default') {
+
+    if (!sourceLess || typeof sourceLess !== 'string') return '';
+    sourceLess = removeTokensFromSource(sourceLess);
+    sourceLess = removeCommentLines(sourceLess);
+
+    try {
+        const tokensParsed = JSON.parse(tokens);
+        return preCompileLessAction(sourceLess, tokensParsed, theme);
     } catch (err: any) {
         throw new Error(err.message);
     }
