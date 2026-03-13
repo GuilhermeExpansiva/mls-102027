@@ -20,5 +20,5 @@ export abstract class PreviewModeBase {
         this.storFile = _storFile;
     }
 
-    protected abstract init(): Promise<void>;
+    abstract init(): Promise<void>;
 }
