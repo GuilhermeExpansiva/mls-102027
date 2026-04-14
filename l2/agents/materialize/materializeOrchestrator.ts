@@ -16,7 +16,7 @@ export function getMaterializeOrchestrator(defPath: string): MaterializeOrchestr
     return cacheMaterializeOrchestrator.get(defPath)!;
 }
 
-class MaterializeOrchestrator {
+export class MaterializeOrchestrator {
 
     private jsonPath: string;
     private items: mls.defs.MaterializeEntry[];
@@ -91,8 +91,10 @@ class MaterializeOrchestrator {
 
     public async getSkill(path: string): Promise<string> {
         try {
-            const f =
-                mls.stor.convertFileReferenceToFile(path);
+
+            if (path.startsWith('/')) path = path.slice(1);
+
+            const f = mls.stor.convertFileReferenceToFile(path);
             if (!f) return '';
 
             const module = await collabImport(f as any);
@@ -188,6 +190,40 @@ class MaterializeOrchestrator {
             return acc;
         }, {} as GroupedByAgent);
     }
+
+    public async getVar(path:string, variable: string): Promise<string> {
+
+        try {
+            const f = mls.stor.convertFileReferenceToFile(path);
+            if (!f) return '';
+            const module = await collabImport(f as any);
+
+            if (!module) {
+                console.info(`Módulo não registrado: ${path}`);
+                return '';
+            }
+
+            if (!module[variable]) {
+                console.info(`Variable não registrado: ${path}; ${variable}`);
+                return '';
+            }
+        
+
+            let result = module[variable];
+
+            if (typeof result === 'object') {
+                return JSON.stringify(result);
+            }
+
+            return result as string;
+
+        } catch (err) {
+            console.error(`Erro em ${path}`, err);
+            return '';
+        }
+
+    }
+
 }
 
 export interface OrchestratorStatus {

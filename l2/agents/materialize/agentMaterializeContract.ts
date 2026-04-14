@@ -22,8 +22,8 @@ async function beforePromptImplicit(
   userPrompt: string,
 ): Promise<mls.msg.AgentIntent[]> {
 
- 
-  const paths: string[] = []; 
+
+  const paths: string[] = [];
 
   const inputs: mls.msg.IAMessageInputType[] = [{ type: "system", content: system1 }];
 
@@ -76,8 +76,10 @@ async function beforePromptStep(
 
   console.info('--------agentMaterializeContract--------')
   const info = JSON.parse(args) as { path: string, item: mls.defs.MaterializeEntry };
-  console.info(info);
-
+  const orch = getMaterializeOrchestrator(info.path);
+  const user = await orch.getVar(info.path, info.item.specVar);
+  const skill = await orch.getSkill(info.item.skillPath);
+  const prompt = `##Skill\n${skill}\n\n##User data\n${user}\n\n##User info\n${JSON.stringify(info)}`;
 
   const continueParallel: mls.msg.AgentIntentPromptReady = {
     type: "prompt_ready",
@@ -87,9 +89,8 @@ async function beforePromptStep(
     taskId: context.task?.PK || '',
     hookSequential,
     parentStepId: parentStep.stepId,
-    humanPrompt: JSON.stringify(info)
+    humanPrompt: prompt
   }
-  
   return [continueParallel];
 
 }
@@ -106,8 +107,10 @@ async function afterPromptStep(
   if (payload?.type !== 'flexible' || !payload.result) throw new Error(`[afterPromptStep] invalid payload: ${payload}`)
 
   let status: mls.msg.AIStepStatus = 'completed';
- 
-  const orch = getMaterializeOrchestrator(payload.result.path);
+
+  console.info(payload.result);
+
+  const orch = getMaterializeOrchestrator(payload.result.path); 
   const group = await orch.processGroup(payload.result.id);
 
   const newSteps: mls.msg.AgentIntentAddStep[] = [];
@@ -133,7 +136,7 @@ async function afterPromptStep(
         prompt: '@@ ' + JSON.stringify(info),
         rags: [],
       },
-      executionMode: { type: 'parallel', args: info.map((i: any) => JSON.stringify({ path: payload.result.path, item:i })) }
+      executionMode: { type: 'parallel', args: info.map((i: any) => JSON.stringify({ path: payload.result.path, item: i })) }
     };
 
     newSteps.push(newStep)
@@ -155,15 +158,19 @@ async function afterPromptStep(
 
 }
 
+
 const system1 = `
 <!-- modelType: code-->
 <!-- modelTypeList: geminiChat (2.5 pro), code (grok), deepseekchat, codeflash (gemini), deepseekreasoner, mini (4.1) ou nano (openai), codeinstruct (4.1), codereasoning(gpt5), code2 (kimi 2.5) -->
 
-Return as requested by the output using the user's data
-
+You must return the result following the skill's steps. The return value should be sent in the srcFile attribute.
 
 ## Output format
 You must return the object strictly as JSON
+path: same value by "User info";
+id: same value by "User info";
+outputPath: same value by "User info";
+
 [[OutputSection]]
 
 `
@@ -177,9 +184,10 @@ export type Output =
 
 export type OutputResult =
   {
-    path:string;
+    path: string;
     id: string;
     outputPath: string,
+    srcFile: string
   }
 //#endregion 
 
