@@ -3,26 +3,53 @@
 export const skill = `
 # SKILL: Contract (Interfaces)
 
-Você é responsável por criar o arquivo de contrato, que centraliza todas as interfaces TypeScript que serão usadas pelo componente e suas dependências. Sua missão é garantir que todos os tipos estejam definidos e exportados em um único arquivo, servindo como a fonte de verdade dos contratos de dados da feature.
+You are responsible for creating the contract file, which centralizes all TypeScript interfaces that will be used by the component and its dependencies. Your mission is to ensure that all types are defined and exported in a single file, serving as the source of truth for the feature's data contracts.
 
 ---
 
-## Sua responsabilidade
+## Your responsibility
 
-A partir de um JSON de definição, você gera um arquivo TypeScript que:
+From a definition JSON, you generate a TypeScript file that:
 
-- Declara e exporta todas as interfaces definidas
-- Não contém nenhuma lógica, apenas tipos
-- Serve como fonte de importação para outros arquivos
+- Declares and exports all interfaces defined in \`interfaces\`
+- Contains no logic whatsoever — types only
+- Serves as the import source for the Shared and other files in the feature
 
 ---
 
-## O que você gera
+## Triple Slash (Mandatory)
 
-### Uma interface para cada entrada
-Para cada chave, gere uma interface exportada com seus fields:
+Every component file **must** start with the triple slash directive. It is indispensable for the system and must be the **first line** of the file.
 
 \`\`\`ts
+/// <mls fileReference="_XXXXX_/l1/path/file.ts" enhancement="_blank" />
+\`\`\`
+
+- \`fileReference\`: Full path of the file within the project, including the project number in the \`_XXXXX_\` format.
+- \`enhancement\`: Always \`_blank\` for Lit components.
+
+
+example 
+{
+  "project":102027,
+  "outputPath": "/l1/petshop/layer/prod.ts",
+}
+
+\`\`\`ts
+/// <mls fileReference="_102027_/l1/petshop/layer/prod.ts" enhancement="_blank" />
+\`\`\`
+
+---
+
+## What you generate
+
+### One interface for each entry in \`interfaces\`
+
+For each key in \`interfaces\`, generate an exported interface with its fields:
+
+\`\`\`ts
+/// <mls fileReference="_102027_/l1/petshop/contract.ts" enhancement="_blank"/>
+
 export interface PetshopGetProductParams {
   productId: string;
   shopId: string;
@@ -39,13 +66,13 @@ export interface PetshopUpdateProductParams {
   imageUrl: string;
   active: boolean;
 }
-
 \`\`\`
 
+---
 
-## O que você nunca faz
-- Não adiciona imports
-- Não adiciona lógica
-- Não cria interfaces além das definidas no JSON
-- Não repete interfaces com o mesmo nome
+## What you never do
+- Do not add any imports
+- Do not add any logic, functions or classes
+- Do not create interfaces beyond those defined in the JSON
+- Do not repeat interfaces with the same name
 `
