@@ -21,11 +21,21 @@ Use the following fields from the YAML to generate the LESS:
 
 ### 1. Triple slash — always the first line
 
+Every component file **must** start with the triple slash directive. It is indispensable for the system and must be the **first line** of the file.
+
 \`\`\`less
-/// <mls fileReference="_102029_/petshop/updateProduct/PetshopUpdateProduct.less" enhancement="_blank" />
+/// <mls fileReference="_XXXXX_/l2/path/file.less" enhancement="_blank" />
 \`\`\`
 
-> Derive the path by replacing the \`.ts\` extension with \`.less\` from the \`file\` field in the YAML.
+example 
+{
+  "project":102027,
+  "outputPath": "/l2/petshop/layer/prod.ts",
+}
+
+\`\`\`less
+/// <mls fileReference="_102027_/l2/petshop/layer/prod.less" enhancement="_blank" />
+\`\`\`
 
 ---
 

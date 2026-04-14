@@ -1,7 +1,7 @@
 /// <mls fileReference="_102027_/l2/agents/materialize/agentMaterializeContract.ts" enhancement="_100554_/l2/enhancementAgent.ts"/>
 
 import { IAgentAsync, IAgentMeta } from '/_100554_/l2/aiAgentBase.js';
-import { getMaterializeOrchestrator } from '/_102027_/l2/agents/materialize/materializeOrchestrator.js';
+import { getMaterializeOrchestrator } from '/_102027_/l2/agents/materialize/materializeOrchestrator.js'; 
 
 export function createAgent(): IAgentAsync {
   return {
@@ -75,7 +75,8 @@ async function beforePromptStep(
   }
 
   console.info('--------agentMaterializeContract--------')
-  const info = JSON.parse(args) as { path: string, item: mls.defs.MaterializeEntry };
+  const info = JSON.parse(args) as { path: string, item: mls.defs.MaterializeEntry, project?:number };
+  info.project = mls.actualProject || 0;
   const orch = getMaterializeOrchestrator(info.path);
   const user = await orch.getVar(info.path, info.item.specVar);
   const skill = await orch.getSkill(info.item.skillPath);
@@ -109,10 +110,11 @@ async function afterPromptStep(
   let status: mls.msg.AIStepStatus = 'completed';
 
   console.info(payload.result);
-
+  
   const orch = getMaterializeOrchestrator(payload.result.path); 
-  const group = await orch.processGroup(payload.result.id);
+  await orch.createStorFile(payload.result.outputPath, payload.result.srcFile);
 
+  const group = await orch.processGroup(payload.result.id);
   const newSteps: mls.msg.AgentIntentAddStep[] = [];
 
   Object.keys(group).forEach((g) => {
@@ -167,10 +169,6 @@ You must return the result following the skill's steps. The return value should 
 
 ## Output format
 You must return the object strictly as JSON
-path: same value by "User info";
-id: same value by "User info";
-outputPath: same value by "User info";
-
 [[OutputSection]]
 
 `
@@ -179,14 +177,14 @@ outputPath: same value by "User info";
 export type Output =
   {
     type: "flexible";
-    result: OutputResult;
+    result: OutputResult; 
   }
 
 export type OutputResult =
   {
-    path: string;
-    id: string;
-    outputPath: string,
+    path: string; // same value by "User info";
+    id: string; // same value by "User info";
+    outputPath: string, // same value by "User info";
     srcFile: string
   }
 //#endregion 

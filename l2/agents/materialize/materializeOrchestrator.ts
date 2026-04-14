@@ -2,6 +2,8 @@
 
 import { getMaterializeIndex } from '/_102027_/l2/defsAST.js'
 import { collabImport } from '/_102027_/l2/collabImport.js';
+import { createStorFile, IReqCreateStorFile } from '/_102027_/l2/libStor.js';
+import { createModelAnyFile } from '/_102027_/l2/libModel.js';
 
 const cacheMaterializeOrchestrator = new Map<string, MaterializeOrchestrator>();
 
@@ -222,6 +224,42 @@ export class MaterializeOrchestrator {
             return '';
         }
 
+    }
+
+    public async createStorFile(fileRef: string, src: string): Promise<mls.stor.IFileInfo>{
+
+        if (!fileRef.startsWith('_')) fileRef = `_${mls.actualProject || 0}_${fileRef}`;
+        
+        const info = mls.stor.convertFileReferenceToFile(fileRef);
+
+        const k = mls.stor.getKeyToFile(info);
+
+        let sf = mls.stor.files[k];
+
+        if (!sf) {
+            const param: IReqCreateStorFile = {
+                ...info,
+                source:src
+            } 
+
+            sf = await createStorFile(param, false, false, false);
+
+        } else {
+
+            if (!['.ts', '.less', '.defs.ts', '.test.ts'].includes(sf.extension)) {
+
+                const m = await createModelAnyFile(sf);
+                if (m && m.model) m.model.setValue(src);
+                
+            } else {
+
+                const m = await sf.getOrCreateModel();
+                if (m && m.model) m.model.setValue(src);
+            }
+        }
+
+        return sf;
+        
     }
 
 }
