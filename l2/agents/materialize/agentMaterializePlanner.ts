@@ -1,7 +1,7 @@
 /// <mls fileReference="_102027_/l2/agents/materialize/agentMaterializePlanner.ts" enhancement="_102027_/l2/enhancementAgent.ts"/>
 
 import { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';  
-import { appendLongTermMemory } from '/_100554_/l2/aiAgentHelper.js';
+import { appendLongTermMemory } from '/_102027_/l2/aiAgentHelper.js';
 
 export function createAgent(): IAgentAsync {  
     return {

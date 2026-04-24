@@ -228,7 +228,7 @@ private _computeIsFormValid() {
 ## Imports
 
 \`\`\`ts
-import { CollabLitElement } from '/_100554_/l2/collabLitElement.js';
+import { CollabLitElement } from '/_102027_/l2/collabLitElement.js';
 import { property, state }  from 'lit/decorators.js';
 import { execBff }          from '/_102029_/l2/bffClient.js';
 \`\`\`
