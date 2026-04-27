@@ -334,6 +334,29 @@ export async function getEnhancementName(file: { project: number, shortName: str
     return enhacementName;
 }
 
+
+export async function getStyleEnhancementName(file: { project: number, shortName: string, folder: string, level: number }): Promise<string | undefined> {
+    const key = mls.editor.getKeyModel(file.project, file.shortName, file.folder, file.level);
+    const mmodel = mls.editor.models[key];
+
+    const lines = mmodel.style?.model.getLinesContent();
+    if (!lines) return undefined;
+    const firstLine = lines[0];
+    if (!firstLine.startsWith('///')) throw new Error('model style invalid, first line must be tripleslash /// <mls');
+
+    const tripleSlash = mls.common.tripleslash.parseXMLTripleSlash(firstLine);
+    const enhacementName = tripleSlash?.variables.enhancement;
+    return enhacementName;
+
+    /*
+    if (!mmodel || !mmodel.style) throw new Error('model invalid');
+    if (!mmodel.style.styleResults) throw new Error('model style not compiled yet');
+    const enhacementName = mmodel.style.styleResults.tripleSlashMLS?.variables.enhancement
+    if (!enhacementName) throw new Error('enhacementName not valid');
+    return enhacementName;
+    */
+}
+
 const BaseProject = 100554;
 export async function loadPluginProject(project: number, scope: string, onlyEnabled: boolean = true): Promise<mls.plugin.MenuAction[]> {
 

@@ -1,6 +1,6 @@
 /// <mls fileReference="_102027_/l2/libModel.ts" enhancement="_blank"/>
 
-import { getEnhancementName, getBaseTemplate } from '/_102027_/l2/libCommom.js';
+import { getEnhancementName, getStyleEnhancementName, getBaseTemplate } from '/_102027_/l2/libCommom.js';
 import { getTokensLess, removeTokensFromSource } from '/_102027_/l2/designSystemBase.js';
 import { getPath } from '/_102027_/l2/utils.js';
 import { getDefsByFile } from '/_102027_/l2/libMindMap.js';
@@ -197,7 +197,7 @@ export function setErrorOnModel(model: monaco.editor.ITextModel, line: number, s
     monaco.editor.setModelMarkers(model, 'markerSource', [markerOptions]);
 }
 
-export async function createModelAnyFile(storFile: mls.stor.IFileInfo) { 
+export async function createModelAnyFile(storFile: mls.stor.IFileInfo) {
     return _createModelAnyFile(storFile);
 }
 
@@ -345,7 +345,7 @@ async function _createModelAnyFile(storFile: mls.stor.IFileInfo) {
 
 
     if ((storFile as any).isCreateModelAny) return storFile.getOrCreateModel();
-    
+
     const ref = mls.stor.convertFileToFileReference(storFile);
     const uri = monaco.Uri.parse(`file://server/` + ref);
     const src = await storFile.getContent() as string;
@@ -354,7 +354,7 @@ async function _createModelAnyFile(storFile: mls.stor.IFileInfo) {
     const m: mls.editor.IModelBase = {
         model: model1,
         storFile,
-        codeLens:{}
+        codeLens: {}
     }
 
     setModelEventAny(m, storFile)
@@ -365,7 +365,7 @@ async function _createModelAnyFile(storFile: mls.stor.IFileInfo) {
 
 }
 
-function setModelEventAny(model: mls.editor.IModelBase, storFile: mls.stor.IFileInfo) {
+export function setModelEventAny(model: mls.editor.IModelBase, storFile: mls.stor.IFileInfo) {
 
     if (!model) return;
     // Register model events and hooks
@@ -515,19 +515,26 @@ async function _updateModelStatusLess(modelBase: mls.editor.IModelStyle, changed
     if (!modelBase.storFile) throw new Error('Invalid stor file');
 
     const position: 'left' | 'right' | 'all' = _getPosition(modelBase.model.id, mapExt[modelBase.storFile.extension]);
-
     const lastStatus = modelBase.styleResults ? modelBase.styleResults.errors.length > 0 : modelBase.storFile.hasError;
 
     modelBase.storFile.hasError = false;
-
     let modelValue = modelBase.model.getValue();
+    const { project, shortName, folder, level } = modelBase.storFile;
 
-    let fileModels = mls.editor.getModels(modelBase.storFile.project, modelBase.storFile.shortName, modelBase.storFile.folder, modelBase.storFile.level);
+    let fileModels = mls.editor.getModels(project, shortName, folder, level);
+    if (!fileModels) throw new Error('[_updateModelStatusLess] Not found file models');
 
-    if (!fileModels) throw new Error('[_updateModelStatusLess] Not found file models')
+    const enhacementName = await getStyleEnhancementName({ project, shortName, folder, level }).catch((e: any) => undefined);
+    if (!enhacementName || enhacementName === 'enhancementStyle') {
+        const enhancementInstanceLess = await import('/_100554_/l2/enhancementStyle.js')
+        if (enhancementInstanceLess) await enhancementInstanceLess.onAfterChange(fileModels);
+    } else {
+        const path = getPath(enhacementName);
+        if (!path) throw new Error('[_updateModelStatusLess] Not found path:' + enhacementName)
+        const enhancementInstanceLess = await import(`/_${path.project}_/l2/${path.folder ? path.folder + '/' : ''}${path.shortName}.js`)
+        if (enhancementInstanceLess) await enhancementInstanceLess.onAfterChange(fileModels);
+    }
 
-    const enhancementInstanceLess = await import('/_100554_/l2/enhancementStyle.js')
-    if (enhancementInstanceLess) await enhancementInstanceLess.onAfterChange(fileModels);
 
     mls.l2.less.compileStyle(modelBase);
     modelValue = removeTokensFromSource(modelValue);
@@ -538,8 +545,8 @@ async function _updateModelStatusLess(modelBase: mls.editor.IModelStyle, changed
         }
 
         const isOk = await mls.l2.typescript.compileAndPostProcess(fileModels.ts, true, true);
-
         fileModels.ts.storFile.hasError = !isOk;
+
     }
 
 
