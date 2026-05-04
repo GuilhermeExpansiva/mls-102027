@@ -607,7 +607,7 @@ export async function getBaseTemplate(file: IInfoFile, enhancement: string = '_b
 
         case ('.less'): return `/// <mls fileReference="${name}" enhancement="${enhancement}"/>\n\n${utils.convertFileNameToTag({ project, shortName, folder })} {\n\n// Here your less\n\n }`;
 
-        case ('.test.ts'): return `/// <mls fileReference="${name}" enhancement="${enhancement}"/>\n\n import { ICANTest, ICANIntegration, ICANSchema  } from '/_100554_/l2/tsTestAST.js';\n export const integrations: ICANIntegration[] = [];\n export const tests: ICANTest[] = [];`;
+        case ('.test.ts'): return `/// <mls fileReference="${name}" enhancement="${enhancement}"/>\n\n`;
 
         case ('.defs.ts'): return `/// <mls fileReference="${name}" enhancement="${enhancement}"/>\n\n`;
 
