@@ -246,6 +246,11 @@ export const requires: mls.l2.enhancement.IRequire[] = [
         type: "cdn",
         name: 'lit/directives/unsafe-svg.js',
         ref: "https://cdn.jsdelivr.net/npm/lit@3/directives/unsafe-svg.js/+esm",
+    },
+    {
+        type: "import",
+        name: "tailwind.js",
+        ref: "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4",
     }
 ];
 
@@ -300,3 +305,4 @@ export const onAfterCompile = async (modelTS: mls.editor.IModelTS): Promise<void
 export const onAfterCompileAction = async (sourceJS: string, sourceTS: string, css?: { sourceLess: string, sourceTokens: string }): Promise<string> => {
     return await injectStyleAction(sourceJS, sourceTS, css?.sourceLess || '', css?.sourceTokens || '', 'Default', '_102027_/l2/enhancementLit');
 }
+
