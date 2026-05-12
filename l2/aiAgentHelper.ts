@@ -327,3 +327,45 @@ export function getNextStepIdAvaliable(task: mls.msg.TaskData): number {
   return nextStepId;
 }
 
+export function findPreviousAgentStep(data: mls.msg.TaskData, baseStep:number): mls.msg.AIAgentStep | null  {
+  const nextSteps = data.iaCompressed?.nextSteps;
+
+  // Percorre a árvore guardando o "pai" de cada stepId
+  const traverse = (steps:any[], parentStep:mls.msg.AIAgentStep | null = null): mls.msg.AIAgentStep | undefined | null => {
+    for (const step of steps) {
+      if (step.type === "agent") {
+        if (step.stepId === baseStep) {
+          return parentStep;
+        }
+
+        // Busca recursiva nos nextSteps do step atual
+        if (step.nextSteps && step.nextSteps.length > 0) {
+          const found = traverse(step.nextSteps, step);
+          if (found !== undefined) return found;
+        }
+
+        // Busca dentro do payload da interação (se existir e for objeto/array)
+        if (step.interaction?.payload) {
+          const payload = step.interaction.payload;
+          const payloadSteps = Array.isArray(payload) ? payload : [payload];
+          const found = traverse(payloadSteps, step);
+          if (found !== undefined) return found;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  if (nextSteps === undefined) {
+    return null; 
+  }
+
+  const previousStep = traverse(nextSteps);
+
+  if (previousStep === undefined) {
+    return null; 
+  }
+
+  return previousStep; // null = é root, objeto = step pai
+}
+
