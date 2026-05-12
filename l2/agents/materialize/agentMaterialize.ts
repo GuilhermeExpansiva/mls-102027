@@ -1,9 +1,10 @@
 /// <mls fileReference="_102027_/l2/agents/materialize/agentMaterialize.ts" enhancement="_102027_/l2/enhancementAgent.ts"/>
 
 import { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
-import { getMaterializeOrchestrator } from '/_102027_/l2/agents/materialize/materializeOrchestrator.js';  
+import { getMaterializeOrchestrator } from '/_102027_/l2/agents/materialize/materializeOrchestrator.js';
+import { findPreviousAgentStep } from '/_102027_/l2/aiAgentHelper.js';
 
-export function createAgent(): IAgentAsync {   
+export function createAgent(): IAgentAsync {
   return {
     agentName: "agentMaterialize",
     agentProject: 102027,
@@ -54,26 +55,9 @@ async function beforePromptStep(
   hookSequential: number,
   args?: string
 ): Promise<mls.msg.AgentIntent[]> {
-  if (!args) throw new Error(`[beforePromptStep] args invalid`)
 
-  if (args.startsWith("@@")) { // se fosse paralelo
-  
-    const continueParallel1: mls.msg.AgentIntentPromptReady = {
-      type: "prompt_ready",
-      args,
-      messageId: context.message.orderAt,
-      threadId: context.message.threadId,
-      taskId: context.task?.PK || '',
-      hookSequential,
-      parentStepId: 1,
-      humanPrompt: '',
-      systemPrompt: system1
-    }
-    return [continueParallel1];
+  if (!args) throw new Error(`(${agent.agentName})[beforePromptStep] args invalid`);
 
-  }
-
-  //
   const orch = getMaterializeOrchestrator(args);
   const itens = await orch.process('init');
 
@@ -101,14 +85,17 @@ async function afterPromptStep(
   step: mls.msg.AIAgentStep,
   hookSequential: number,
 ): Promise<mls.msg.AgentIntent[]> {
+
   if (!agent || !context || !step) throw new Error(`[afterPromptStep] invalid params, agent:${!!agent}, context:${!!context}, step:${!!step}`);
+
   const payload = (step.interaction?.payload?.[0]);
   if (payload?.type !== 'flexible' || !payload.result) throw new Error(`[afterPromptStep] invalid payload: ${payload}`)
+
   let status: mls.msg.AIStepStatus = 'completed';
   let intents: mls.msg.AgentIntent[] = [];
 
   const output = payload.result;
-  intents = await processOutput(context, output, agent);
+  intents = await processOutput(context, output, agent, parentStep);
 
   const updateStatus: mls.msg.AgentIntentUpdateStatus = {
     type: 'update-status',
@@ -126,42 +113,44 @@ async function afterPromptStep(
 
 }
 
-async function processOutput(context: mls.msg.ExecutionContext, output: any, agent: IAgentMeta): Promise<mls.msg.AgentIntent[]> {
+async function processOutput(context: mls.msg.ExecutionContext, output: any, agent: IAgentMeta, parentStep: mls.msg.AIAgentStep): Promise<mls.msg.AgentIntent[]> {
 
   let module = context.task?.iaCompressed?.longMemory['moduleName'];
   if (!module) throw new Error('Not found moduleName:' + agent.agentName);
 
   const orch = getMaterializeOrchestrator(output.path);
   const group = orch.groupByAgent(output.itens)
-
+  const stepOri = context.task ? (findPreviousAgentStep(context.task, parentStep.stepId))?.stepId : parentStep.stepId;
   const newSteps: mls.msg.AgentIntentAddStep[] = [];
 
   Object.keys(group).forEach((g) => {
 
     const info = group[g];
 
-    const newStep: mls.msg.AgentIntentAddStep = {
-      type: "add-step",
-      messageId: context.message.orderAt,
-      threadId: context.message.threadId,
-      taskId: context.task?.PK || '',
-      parentStepId: 1,
-      stepTitle: g+" file {{completed}} of {{total}}, errors: {{failed}}",
-      step:
-      {
-        type: 'agent',
-        stepId: 0,
-        interaction: null,
-        status: 'waiting_human_input',
-        nextSteps: [],
-        agentName: g,
-        prompt: '@@ ' + JSON.stringify(info),
-        rags: [],
-      },
-      executionMode: { type: 'parallel', args: info.map((i: any) => JSON.stringify({ path: output.path, item:i })) }
-    };
+    info.forEach((i: any) => {
 
-    newSteps.push(newStep)
+      const newStep: mls.msg.AgentIntentAddStep = {
+        type: "add-step",
+        messageId: context.message.orderAt,
+        threadId: context.message.threadId,
+        taskId: context.task?.PK || '',
+        parentStepId: stepOri || parentStep.stepId ,
+        step:
+        {
+          type: 'agent',
+          stepId: 0,
+          interaction: null,
+          status: 'waiting_human_input',
+          nextSteps: [],
+          agentName: g,
+          prompt: JSON.stringify({ path: output.path, item: i }),
+          rags: [],
+        }
+      };
+
+      newSteps.push(newStep);
+
+    })
 
   });
   

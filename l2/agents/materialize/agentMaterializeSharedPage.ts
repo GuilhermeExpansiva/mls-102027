@@ -1,9 +1,10 @@
 /// <mls fileReference="_102027_/l2/agents/materialize/agentMaterializeSharedPage.ts" enhancement="_102027_/l2/enhancementAgent.ts"/>
 
 import { IAgentAsync, IAgentMeta } from '/_102027_/l2/aiAgentBase.js';
-import { getMaterializeOrchestrator } from '/_102027_/l2/agents/materialize/materializeOrchestrator.js'; 
+import { getMaterializeOrchestrator } from '/_102027_/l2/agents/materialize/materializeOrchestrator.js';
+import { findPreviousAgentStep } from '/_102027_/l2/aiAgentHelper.js';
 
-export function createAgent(): IAgentAsync { 
+export function createAgent(): IAgentAsync {
   return {
     agentName: "agentMaterializeSharedPage",
     agentProject: 102027,
@@ -55,32 +56,14 @@ async function beforePromptStep(
   hookSequential: number,
   args?: string
 ): Promise<mls.msg.AgentIntent[]> {
-  if (!args) throw new Error(`[beforePromptStep] args invalid`)
 
-  if (args.startsWith("@@")) {
-
-    const continueParallel1: mls.msg.AgentIntentPromptReady = {
-      type: "prompt_ready",
-      args,
-      messageId: context.message.orderAt,
-      threadId: context.message.threadId,
-      taskId: context.task?.PK || '',
-      hookSequential,
-      parentStepId: parentStep.stepId,
-      humanPrompt: '',
-      systemPrompt: system1
-    }
-    return [continueParallel1];
-
-  }
+  if (!args) throw new Error(`(${agent.agentName})[beforePromptStep] args invalid`);
 
   console.info('--------agentMaterializeSharedPage--------')
   const info = JSON.parse(args) as { path: string, item: mls.defs.MaterializeEntry, project?: number };
+
   info.project = mls.actualProject || 0;
-  const orch = getMaterializeOrchestrator(info.path);
-  const user = await orch.getVar(info.path, info.item.specVar);
-  const skill = await orch.getSkill(info.item.skillPath);
-  const prompt = `##User info\n${JSON.stringify(info)}\n\n##Skill\n${skill}\n\n##User data\n${user}`;
+  const prompt = await getSkill(info);
 
   const continueParallel: mls.msg.AgentIntentPromptReady = {
     type: "prompt_ready",
@@ -90,9 +73,9 @@ async function beforePromptStep(
     taskId: context.task?.PK || '',
     hookSequential,
     parentStepId: parentStep.stepId,
-    humanPrompt: prompt
+    humanPrompt: prompt,
+    systemPrompt: system1
   }
-
   return [continueParallel];
 
 }
@@ -104,15 +87,16 @@ async function afterPromptStep(
   step: mls.msg.AIAgentStep,
   hookSequential: number,
 ): Promise<mls.msg.AgentIntent[]> {
-  if (!agent || !context || !step) throw new Error(`[afterPromptStep] invalid params, agent:${!!agent}, context:${!!context}, step:${!!step}`);
+  if (!agent || !context || !step) throw new Error(`(${agent.agentName}) [afterPromptStep] invalid params, agent:${!!agent}, context:${!!context}, step:${!!step}`);
+
   const payload = (step.interaction?.payload?.[0]);
-  if (payload?.type !== 'flexible' || !payload.result) throw new Error(`[afterPromptStep] invalid payload: ${payload}`)
+  if (payload?.type !== 'flexible' || !payload.result) throw new Error(`(${agent.agentName}) [afterPromptStep] invalid payload: ${payload}`)
 
   let status: mls.msg.AIStepStatus = 'completed';
   let intents: mls.msg.AgentIntent[] = [];
 
   const output = payload.result;
-  intents = await processOutput(context, output, agent);
+  intents = await processOutput(context, output, agent, parentStep);
 
   const updateStatus: mls.msg.AgentIntentUpdateStatus = {
     type: 'update-status',
@@ -130,10 +114,12 @@ async function afterPromptStep(
 
 }
 
-async function processOutput(context: mls.msg.ExecutionContext, output: any, agent: IAgentMeta): Promise<mls.msg.AgentIntent[]> {
+async function processOutput(context: mls.msg.ExecutionContext, output: any, agent: IAgentMeta, parentStep: mls.msg.AIAgentStep): Promise<mls.msg.AgentIntent[]> {
 
   const orch = getMaterializeOrchestrator(output.path);
   await orch.createStorFile(output.outputPath, parseAISource(output.srcFile));
+
+  const stepOri = context.task ? (findPreviousAgentStep(context.task, parentStep.stepId))?.stepId : parentStep.stepId;
 
   const group = await orch.processGroup(output.id);
   const newSteps: mls.msg.AgentIntentAddStep[] = [];
@@ -142,44 +128,54 @@ async function processOutput(context: mls.msg.ExecutionContext, output: any, age
 
     const info = group[g];
 
-    const newStep: mls.msg.AgentIntentAddStep = {
-      type: "add-step",
-      messageId: context.message.orderAt,
-      threadId: context.message.threadId,
-      taskId: context.task?.PK || '',
-      parentStepId: 1,
-      stepTitle: g+" file {{completed}} of {{total}}, errors: {{failed}}",
-      step:
-      {
-        type: 'agent',
-        stepId: 0,
-        interaction: null,
-        status: 'waiting_human_input',
-        nextSteps: [],
-        agentName: g,
-        prompt: '@@ ' + JSON.stringify(info),
-        rags: [],
-      },
-      executionMode: { type: 'parallel', args: info.map((i: any) => JSON.stringify({ path: output.path, item: i })) }
-    };
+    info.forEach((i: any) => {
 
-    newSteps.push(newStep)
+      const newStep: mls.msg.AgentIntentAddStep = {
+        type: "add-step",
+        messageId: context.message.orderAt,
+        threadId: context.message.threadId,
+        taskId: context.task?.PK || '',
+        parentStepId: stepOri || parentStep.stepId,
+        step:
+        {
+          type: 'agent',
+          stepId: 0,
+          interaction: null,
+          status: 'waiting_human_input',
+          nextSteps: [],
+          agentName: g,
+          prompt: JSON.stringify({ path: output.path, item: i }),
+          rags: [],
+        }
+      };
+
+      newSteps.push(newStep);
+
+    })
 
   });
 
   return newSteps;
 }
 
+async function getSkill(info: { path: string, item: mls.defs.MaterializeEntry, project?: number }): Promise<string> {
+
+  const orch = getMaterializeOrchestrator(info.path);
+  const user = await orch.getVar(info.path, info.item.specVar);
+  const skill = await orch.getSkill(info.item.skillPath);
+  const prompt = `##Skill\n${skill}\n\n##User data\n${user}\n\n##User info\n${JSON.stringify(info)}`;
+
+  return prompt;
+}
+
 function parseAISource(raw: string): string {
-    // Após JSON.parse, o \\n já virou \n corretamente
-    // Só precisa decodificar unicode escapes que o modelo insistir em usar
-    return decodeUnicodeEscapes(raw);
+  return decodeUnicodeEscapes(raw);
 }
 
 function decodeUnicodeEscapes(src: string): string {
-    return src.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
-        String.fromCharCode(parseInt(hex, 16))
-    );
+  return src.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16))
+  );
 }
 
 const system1 = `
