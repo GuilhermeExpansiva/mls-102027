@@ -50,6 +50,7 @@ export class AiAgentDefaultFeedback102027 extends StateLitElement {
             case 'in_progress': return html`<div class="loader"></div>`;
             case 'failed': return html`<div class="error">${this.iconError}</div>`;
             case 'pending': return html`<div class="pending">${this.iconPending}</div>`;
+            case 'waiting_dependency': return html`<div class="waiting">${this.iconPending}</div>`;
             case 'waiting_after_prompt': return html`<div class="waiting">${this.iconWaitingAfter}</div>`;
             case 'waiting_human_input': return html`<div class="waiting">${this.iconWaitingHumam}</div>`
             default: return '•';
@@ -423,5 +424,4 @@ export class AiAgentDefaultFeedback102027 extends StateLitElement {
 
 
 }
-
 
