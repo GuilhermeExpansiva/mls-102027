@@ -100,11 +100,12 @@ export const getInteractionStepId = (task: mls.msg.TaskData, stepId: number): nu
   // | interaction
   // | | nextsSteps []
   // ...
-  // this routine find the parent interaction stepId
+  // this routine finds the parent agent stepId for a pending step
   const allSteps = getAllSteps(task.iaCompressed?.nextSteps);
   if (!allSteps) return null;
 
   for (const step of allSteps) {
+    if (step.nextSteps?.find(s => s.stepId === stepId)) return step.stepId;
     if (!step.interaction || !step.interaction.payload) continue;
     if (step.interaction.payload.length < 1) continue;
     if (step.interaction.payload.find(s => s.stepId === stepId)) return step.stepId;
@@ -368,4 +369,3 @@ export function findPreviousAgentStep(data: mls.msg.TaskData, baseStep:number): 
 
   return previousStep; // null = é root, objeto = step pai
 }
-

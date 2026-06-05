@@ -4,6 +4,7 @@ import {
     getNextPendentStep,
     getStepById,
     getInteractionStepId,
+    findPreviousAgentStep,
     notifyTaskChange,
     notifyThreadChange,
     getRootAgent
@@ -563,8 +564,9 @@ export async function restartStep(
     if (step.status !== 'failed') throw new Error('(restartStep) only failed steps can be restarted');
     if (!step.planning) throw new Error('(restartStep) step has no planning');
 
-    const parentStepId = getInteractionStepId(task, stepId);
-    if (parentStepId === null) throw new Error(`(restartStep) parent step not found for step ${stepId}`);
+    const parentStep = findPreviousAgentStep(task, stepId);
+    if (!parentStep) throw new Error(`(restartStep) parent step not found for step ${stepId}`);
+    const parentStepId = parentStep.stepId;
 
     const intent: mls.msg.AgentIntentUpdateStatus = {
         type: 'update-status',
