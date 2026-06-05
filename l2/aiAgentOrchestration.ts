@@ -547,6 +547,45 @@ export async function pauseOrContinueTask(
 
 }
 
+// ── restartStep ─────────────────────────────────────────────────
+
+export async function restartStep(
+    context: mls.msg.ExecutionContext,
+    stepId: number,
+    cleaner?: 'input' | 'input_output'
+): Promise<void> {
+
+    const task = context.task;
+    if (!task) throw new Error('(restartStep) task not found');
+
+    const step = getStepById(task, stepId) as mls.msg.AIAgentStep | null;
+    if (!step) throw new Error(`(restartStep) step not found: ${stepId}`);
+    if (step.status !== 'failed') throw new Error('(restartStep) only failed steps can be restarted');
+    if (!step.planning) throw new Error('(restartStep) step has no planning');
+
+    const parentStepId = getInteractionStepId(task, stepId);
+    if (parentStepId === null) throw new Error(`(restartStep) parent step not found for step ${stepId}`);
+
+    const intent: mls.msg.AgentIntentUpdateStatus = {
+        type: 'update-status',
+        hookSequential: 0,
+        messageId: context.message.orderAt,
+        threadId: context.message.threadId,
+        taskId: task.PK,
+        parentStepId,
+        stepId,
+        status: 'waiting_dependency',
+        cleaner,
+    };
+
+    const agentRoot = getRootAgent(task);
+    if (!agentRoot) throw new Error('(restartStep) Task has no AI agentRoot');
+    const agent = await loadAgent(agentRoot.agentName);
+    if (!agent) throw new Error('(restartStep) Agent not found');
+    processIntents(agent, context, [intent]);
+
+}
+
 
 // ── Tools ────────────────────────────────────────────────────────
 
