@@ -2,6 +2,7 @@
 
 import {
     getNextPendentStep,
+    getNextClarificationStep,
     getStepById,
     getInteractionStepId,
     findPreviousAgentStep,
@@ -180,9 +181,7 @@ async function* _processIntentsStream(
     if (signal.aborted) return;
 
     let _hooks = context.task.iaCompressed.queueFrontEnd || [];
-    const hooksToProcess = _hooks
-        .filter(h => h.type !== 'pooling')
-        .slice(0, MAX_HOOKS_PER_TURN);
+    const hooksToProcess = selectHooksToProcess(_hooks.filter(h => h.type !== 'pooling'));
 
     let newIntents: mls.msg.AgentIntent[] = [];
 
@@ -231,6 +230,19 @@ async function* _processIntentsStream(
 
     // Reentrada recursiva — continua emitindo eventos
     yield* _processIntentsStream(agent, context, newIntents, signal);
+}
+
+function selectHooksToProcess(hooks: mls.msg.AgentHooks[]): mls.msg.AgentHooks[] {
+    const selected: mls.msg.AgentHooks[] = [];
+    for (const hook of hooks) {
+        selected.push(hook);
+        // beforePromptStep commonly returns prompt_ready with a full LLM prompt.
+        // Sending several large prompts in one applyIntents request can exceed
+        // the backend request limit; later recursive cycles will process the rest.
+        if (hook.type === 'beforePromptStep') break;
+        if (selected.length >= MAX_HOOKS_PER_TURN) break;
+    }
+    return selected;
 }
 
 // ── processIntents (fire-and-forget, para uso interno) ───────────
@@ -308,7 +320,8 @@ function getHookFailureIntents(
         taskId: context.task?.PK || '',
         parentStepId: parentStep.stepId,
         stepId: step.stepId,
-        status: 'failed'
+        status: 'failed',
+        traceMsg: error,
     };
 
     return [updateStatusFailed, ...removeIntents];
@@ -425,7 +438,7 @@ async function processHookPooling(context: mls.msg.ExecutionContext): Promise<ml
     let inClarification: boolean = false;
     if (context.task) {
         const step = getNextPendentStep(context.task);
-        inClarification = !!step && step.type === "clarification";
+        inClarification = (!!step && step.type === "clarification") || !!getNextClarificationStep(context.task);
         if (inClarification) {
             const threadId = context.message.threadId;
             const taskId = context.task.PK;
@@ -715,9 +728,13 @@ export async function getAgentContext(taskId: string): Promise<{
 }> {
     const task: mls.msg.TaskData | undefined = await storage.getTask(taskId);
     if (!task || !task.messageid_created) throw new Error(`[${agentName}](getAgentContext) Invalid taskId ${taskId}`);
-    const step = getNextPendentStep(task);
-    if (!step) throw new Error("[getAgentContext] No pending step")
-    if (step.type !== "clarification" && step.type !== "tool") throw new Error("[getAgentContext] No pending clarification or tool step");
+    let step: mls.msg.AIPayload | null = getNextPendentStep(task);
+    if (!step || (step.type !== "clarification" && step.type !== "tool")) {
+        const clarStep = getNextClarificationStep(task);
+        if (clarStep) step = clarStep;
+        else if (!step) throw new Error("[getAgentContext] No pending step");
+        else throw new Error("[getAgentContext] No pending clarification or tool step");
+    }
     const interactionId: number | null = getInteractionStepId(task, step.stepId);
     if (!interactionId) throw new Error("[getAgentContext] Not found interactionId in pending step")
     const interaction: mls.msg.AIPayload | null = getStepById(task, interactionId);
