@@ -148,6 +148,11 @@ async function* _processIntentsStream(
     const ret = value as mls.msg.ResponseApplyIntents;
     context.task = ret.task;
     if (ret.message) context.message = ret.message;
+    // Persist before notifying: listeners react to 'task-change' synchronously
+    // and resolve via storage.getTask (e.g. getAgentContext). Notifying before
+    // the store is updated makes them read a stale task — which left the second
+    // clarification stuck on "Processing..." until a manual task click.
+    await storage.addOrUpdateTask(ret.task);
     notifyTaskChange(context, isAddMessageAI ? oldContextCreateAt : undefined);
 
     // ★ Yield: task criada / intents aplicados
@@ -575,10 +580,13 @@ export async function restartStep(
     const step = getStepById(task, stepId) as mls.msg.AIAgentStep | null;
     if (!step) throw new Error(`(restartStep) step not found: ${stepId}`);
     if (step.status !== 'failed') throw new Error('(restartStep) only failed steps can be restarted');
-    if (!step.planning) throw new Error('(restartStep) step has no planning');
 
     const parentStep = findPreviousAgentStep(task, stepId);
     if (!parentStep) throw new Error(`(restartStep) parent step not found for step ${stepId}`);
+    // parallel_dynamic children are created without `planning` (they are driven by the parent's
+    // progress/args queue). They are still restartable — re-run with their own args (step.prompt).
+    const isParallelChild = !!(parentStep as mls.msg.AIAgentStep & { progress?: unknown }).progress;
+    if (!step.planning && !isParallelChild) throw new Error('(restartStep) step has no planning');
     const parentStepId = parentStep.stepId;
 
     const intent: mls.msg.AgentIntentUpdateStatus = {
