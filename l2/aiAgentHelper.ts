@@ -68,7 +68,7 @@ export const getNextResultStep = (task: mls.msg.TaskData): mls.msg.AIResultStep 
 export const getNextClarificationStep = (task: mls.msg.TaskData): mls.msg.AIClarificationStep | null => {
   const allSteps = getAllSteps(task.iaCompressed?.nextSteps);
   const agentSteps = allSteps.filter((step): step is mls.msg.AIClarificationStep => step.type === 'clarification');
-  return agentSteps.find(step => step.status === 'pending') || null;
+  return agentSteps.find(step => step.status === 'pending' || step.status === 'in_progress') || null;
 }
 
 export const getNextPendingStepByAgentName = (task: mls.msg.TaskData, agentName: string): mls.msg.AIAgentStep | null => {

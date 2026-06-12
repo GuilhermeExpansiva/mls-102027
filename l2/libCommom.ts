@@ -656,6 +656,11 @@ export function verifyNeedAddTripleslach(info: mls.stor.IFileInfoBase, src: stri
 
 export async function getInstanceByFile(file: mls.stor.IFileInfo): Promise<Object | undefined> {
 
+    // .defs.ts files are pure data artifacts (no instance/constructor); skip them.
+    // Without this guard, key.replace('.ts', '.js') would produce e.g. foo.defs.js
+    // which the service worker cannot serve when the file was saved without compilation.
+    if (file.extension === '.defs.ts') return undefined;
+
     try {
         let { project, shortName, folder, extension } = file;
         if (file.extension === '.ts') extension = '';
